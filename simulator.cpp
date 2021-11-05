@@ -140,41 +140,6 @@ free_matrix(matrix_t<T>& mat)
 int
 main()
 {
-    /*
-    auto a = generate_matrix(5, 5);
-    auto b = generate_matrix(5, 5);
-    auto c = generate_matrix(5, 5);
-    dump_matrix(a, "a.dat");
-    dump_matrix(b, "b.dat");
-    dump_matrix(c, "c.dat");
-    free_matrix(a);
-    auto d = load_matrix<uint32_t>("a.dat");
-    dump_matrix(d, "d.dat");
-    
-    buffer_t<uint32_t> myBuffer("d.dat",2);
-    
-    printf("%x\n",myBuffer[0][1]);
-    printf("%x\n",myBuffer[0][1]);
-    printf("%x\n",myBuffer[0][2]);
-    printf("%x\n",myBuffer[0][2]);
-    printf("%x\n",myBuffer[0][3]);
-    printf("%x\n",myBuffer[0][1]);
-    printf("%x\n",myBuffer[0][2]);
-    printf("%x\n",myBuffer[0][3]);
-    myBuffer[0][1]=1;   // myBuffer[0][0]=123 does NOT modifies the file!
-    myBuffer.assign(0,1,1);
-    printf("%x\n",myBuffer[0][1]);
-    printf("%x\n",myBuffer[0][1]);
-    printf("%x\n",myBuffer[0][2]);
-    printf("%x\n",myBuffer[0][2]);
-    printf("%x\n",myBuffer[0][3]);
-    printf("%x\n",myBuffer[0][1]);
-    printf("%x\n",myBuffer[0][2]);
-    printf("%x\n",myBuffer[0][3]);
-    printf("Read: %d, Miss: %d, Miss Ratio: %.3f\n", 
-        myBuffer.read_count, myBuffer.miss_count, myBuffer.miss_rate());
-        */
-
     run_simulation(5,10);
     std::cout<<"done\n";
     return 0;

@@ -1,6 +1,4 @@
 /.vscode
-/a.dat
-/b.dat
-/c.dat
-/d.dat
-/simulator.exe
+/*.dat
+/*.exe
+/report
