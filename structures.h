@@ -67,6 +67,11 @@ class buffer_t {
         fs.read((char *)&size_of_T, sizeof(uint32_t));
     }
 
+    /* destructor */
+    ~buffer_t(){
+        fs.close();
+    }
+
     /* operators */
     vector_t operator[](size_t i) {
         if (i >= row) {
