@@ -86,7 +86,7 @@ class buffer_t {
         auto key = i * (col) + j;
         fs.seekp(MATRIX_ARR_OFFSET + key * sizeof(T), std::ios::beg);
         fs.write(reinterpret_cast<char *>(&val), sizeof(T));
-        LRU_get(i, j);
+        LRU_set(key, val);
     }
 
     T seekg_and_read(size_t arr_offset) {
@@ -116,7 +116,7 @@ class buffer_t {
     }
 
     T LRU_get(size_t i, size_t j) {
-        read_count++;
+        //read_count++;
         auto key = i * (col) + j;
         if (cache_map.find(key) == cache_map.end()) {  // cache miss!
             miss_count++;
@@ -182,6 +182,7 @@ class buffer_t {
                 std::cerr << "Index exceeds upper bound." << std::endl;
                 ret = parent->seekg_and_read(i * (parent->col) * sizeof(T));
             } else {
+                parent->read_count++;
                 ret = parent->LRU_get(i, j);
             }
             return ret;

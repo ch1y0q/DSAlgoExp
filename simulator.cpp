@@ -97,7 +97,7 @@ matrix_t<T> load_matrix(const char* filename) {
     for (size_t _a = 0; _a < N; ++_a) {                      \
         for (size_t _b = 0; _b < N; ++_b) {                  \
             for (size_t _c = 0; _c < N; ++_c) {              \
-                c.assign(i, k, c[i][k] + a[i][j] * b[j][k]); \
+                c.assign(i, j, c[i][j] + a[i][k] * b[k][j]); \
             }                                                \
         }                                                    \
     }
@@ -105,8 +105,10 @@ matrix_t<T> load_matrix(const char* filename) {
     printf("==" #_x "==\nRead: %d, Miss: %d, Miss Ratio: %.3f\n", \
            _x.read_count, _x.miss_count, _x.miss_rate());
 #define SHOW_STATS SHOW_STAT(a) SHOW_STAT(b) SHOW_STAT(c)
+#define RESET a.reset_counters();b.reset_counters();c.reset_counters();
 #define RUN_SIM(_a, _b, _c)    \
     printf(#_a #_b #_c ":\n"); \
+    RESET;                     \
     LOOP(_a, _b, _c);          \
     SHOW_STATS;                \
     printf("\n\n");
@@ -140,7 +142,7 @@ void free_matrix(matrix_t<T>& mat) {
 }
 
 int main() {
-    run_simulation(5, 10, 3);
+    run_simulation(30, 10, 10);
     std::cout << "done\n";
     return 0;
 }
