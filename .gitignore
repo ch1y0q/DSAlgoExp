@@ -2,3 +2,5 @@
 /*.dat
 /*.exe
 /report
+data_chunk*
+sorted_*

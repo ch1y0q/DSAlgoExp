@@ -16,6 +16,8 @@
 #include <iostream>
 #include <list>
 #include <unordered_map>
+#include <queue>
+#include <deque>
 
 #include "defs.h"
 /**
@@ -68,9 +70,7 @@ class buffer_t {
     }
 
     /* destructor */
-    ~buffer_t(){
-        fs.close();
-    }
+    ~buffer_t() { fs.close(); }
 
     /* operators */
     vector_t operator[](size_t i) {
@@ -116,7 +116,7 @@ class buffer_t {
     }
 
     T LRU_get(size_t i, size_t j) {
-        //read_count++;
+        // read_count++;
         auto key = i * (col) + j;
         if (cache_map.find(key) == cache_map.end()) {  // cache miss!
             miss_count++;
@@ -190,4 +190,84 @@ class buffer_t {
     };
 };
 
+/* Phase 2 */
+
+template <class T>
+class TreeNode {
+	friend std::ostream& operator<<(std::ostream& out, TreeNode<T>& node) {
+		out << node.data;
+		return out;
+	}
+
+public:
+	TreeNode() :LeftChild(nullptr), RightChild(nullptr), data((T)0) {}
+	TreeNode(T inData) :LeftChild(nullptr), RightChild(nullptr), data(inData) {}
+	TreeNode(TreeNode* lnodeptr, TreeNode* rnodeptr, T inData) : data(inData)
+	{
+		LeftChild = RightChild = nullptr;
+		if (lnodeptr) {
+			auto lchild = new TreeNode(lnodeptr);
+			LeftChild = lchild;
+		}
+		if (rnodeptr) {
+			auto rchild = new TreeNode(rnodeptr);
+			RightChild = rchild;
+		}
+	}
+	TreeNode(const TreeNode* inNode)			// 复制构造函数，深拷贝
+	{
+		data = inNode->data;
+		LeftChild = RightChild = nullptr;
+		if (inNode->LeftChild) {
+			auto lchild = new TreeNode(inNode->LeftChild);
+			LeftChild = lchild;
+		}
+		if (inNode->RightChild) {
+			auto rchild = new TreeNode(inNode->RightChild);
+			RightChild = rchild;
+		}
+	}
+	TreeNode(const TreeNode& inNode)			// 复制构造函数，深拷贝
+	{
+		data = inNode.data;
+		LeftChild = RightChild = nullptr;
+		if (inNode.LeftChild) {
+			auto lchild = new TreeNode(inNode.LeftChild);
+			LeftChild = lchild;
+		}
+		if (inNode.RightChild) {
+			auto rchild = new TreeNode(inNode.RightChild);
+			RightChild = rchild;
+		}
+	}
+
+public:
+	TreeNode* LeftChild;
+	TreeNode* RightChild;
+	T data;
+};
+
+
+template <class T>
+class ext_qsort_t {
+   public:
+    ext_qsort_t(unsigned int ninput, unsigned int nsmall,
+                       unsigned int nlarge, unsigned int nmiddle)
+        : n_input(ninput), n_small(nsmall), n_large(nlarge), n_middle(nmiddle) {
+        input_buffer.reserve(n_input);
+        small_group.reserve(n_small);
+        large_group.reserve(n_large);
+
+        middle_group.clear();
+    }
+    unsigned int n_input;   // capacity of input buffer, size / sizeof(T)
+    unsigned int n_small;   // capacity of small group
+    unsigned int n_large;   // capacity of large group
+    unsigned int n_middle;  // capacity of middle group
+
+    std::vector<T> input_buffer;
+    std::vector<T> small_group;
+    std::vector<T> large_group;
+    std::deque<T> middle_group;  // TODO: replace with Double-ended PQ
+};
 #endif
