@@ -19,6 +19,7 @@
 #include <queue>
 #include <deque>
 
+#include "extern/MinMaxHeap.hpp"
 #include "defs.h"
 /**
  * @brief Defines a generic 2-D matrix with metadata.
@@ -257,8 +258,6 @@ class ext_qsort_t {
         input_buffer.reserve(n_input);
         small_group.reserve(n_small);
         large_group.reserve(n_large);
-
-        middle_group.clear();
     }
     unsigned int n_input;   // capacity of input buffer, size / sizeof(T)
     unsigned int n_small;   // capacity of small group
@@ -268,6 +267,6 @@ class ext_qsort_t {
     std::vector<T> input_buffer;
     std::vector<T> small_group;
     std::vector<T> large_group;
-    std::deque<T> middle_group;  // TODO: replace with Double-ended PQ
+    MinMaxHeap<T> middle_group;  // TODO: replace with Double-ended PQ
 };
 #endif

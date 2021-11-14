@@ -22,4 +22,7 @@
 #define SMALL_GROUP_PROPORTION 0.3
 #define LARGE_GROUP_PROPORTION 0.3
 
+#define DUMPED_SMALL_SUFFIX ".small"
+#define DUMPED_LARGE_SUFFIX ".large"
+
 #endif

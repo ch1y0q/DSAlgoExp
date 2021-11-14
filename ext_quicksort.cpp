@@ -13,7 +13,7 @@
     head -c 256KB </dev/urandom >data_chunk
 */
 
-#define DEBUG
+//#define DEBUG
 
 #include <algorithm>
 #include <fstream>
@@ -49,10 +49,32 @@ unsigned long LARGE_GROUP_SIZE;
 unsigned long MIDDLE_GROUP_MEM;
 unsigned long MIDDLE_GROUP_SIZE;
 
-template <class T>
-struct HeapNode {
-    // TODO
-};
+template <typename T>
+bool is_sorted(const std::string input_name, bool ascending = true) {
+    /* open file */
+    std::ifstream input;
+    input.open(input_name.c_str(), std::ios::in | std::ios::binary);
+
+    if (!input.good()) {
+        std::cerr << "Unable to read file " << input_name << " !" << std::endl;
+        exit(-1);
+    }
+
+    T cur_data, last_data;
+    input.read((char*)&last_data, sizeof(T));
+    while (!input.eof()) {
+        input.read((char*)&cur_data, sizeof(T));
+        if (!input.eof()) {
+            if (ascending) {
+                if (cur_data < last_data) return false;
+            } else {
+                if (cur_data > last_data) return false;
+            }
+        }
+        last_data = cur_data;
+    }
+    return true;
+}
 
 template <typename T>
 void ext_qsort(TreeNode<std::string>* cur_node) {
@@ -110,30 +132,33 @@ void ext_qsort(TreeNode<std::string>* cur_node) {
                !manager.input_buffer.empty()) {
             T cur_data = manager.input_buffer.back();
             manager.input_buffer.pop_back();
-            manager.middle_group.push_back(cur_data);
+            manager.middle_group.push(cur_data);
         }
         while (!manager.input_buffer.empty()) {
             T cur_data = manager.input_buffer.back();
             manager.input_buffer.pop_back();
-            T largest = *std::max_element(manager.middle_group.begin(),
-                                          manager.middle_group.end());
-            T smallest = *std::min_element(manager.middle_group.begin(),
-                                           manager.middle_group.end());
+            T largest = manager.middle_group.findMax();
+            T smallest = manager.middle_group.findMin();
             if (cur_data > largest) {
                 manager.large_group.push_back(cur_data);
             } else if (cur_data < smallest) {
                 manager.small_group.push_back(cur_data);
             } else {  // between min and max
-                auto pos = std::max_element(manager.middle_group.begin(),
-                                            manager.middle_group.end());
-                manager.large_group.push_back(*pos);
-                manager.middle_group.erase(pos);
-                manager.middle_group.push_back(cur_data);
+                /* balancing */
+                if (manager.large_group.size() > manager.small_group.size()) {
+                    auto ele = manager.middle_group.popMin();
+                    manager.small_group.push_back(ele);
+                    manager.middle_group.push(cur_data);
+                } else {
+                    auto ele = manager.middle_group.popMax();
+                    manager.large_group.push_back(ele);
+                    manager.middle_group.push(cur_data);
+                }
             }
 
             if (manager.large_group.size() >= LARGE_GROUP_SIZE) {
                 // save structure to binary tree
-                auto save_name = cur_node->data + ".large";
+                auto save_name = cur_node->data + DUMPED_LARGE_SUFFIX;
                 if (!cur_node->RightChild)
                     cur_node->RightChild = new TreeNode<std::string>(save_name);
                 // write to disk!
@@ -152,7 +177,7 @@ void ext_qsort(TreeNode<std::string>* cur_node) {
             }
             if (manager.small_group.size() >= SMALL_GROUP_SIZE) {
                 // save structure to binary tree
-                auto save_name = cur_node->data + ".small";
+                auto save_name = cur_node->data + DUMPED_SMALL_SUFFIX;
                 if (!cur_node->LeftChild)
                     cur_node->LeftChild = new TreeNode<std::string>(save_name);
                 // write to disk!
@@ -174,15 +199,19 @@ void ext_qsort(TreeNode<std::string>* cur_node) {
 
 #ifdef DEBUG
     std::cout << "large group: " << manager.large_group.size() << std::endl;
-    std::cout << "small group: " << manager.small_group.size() << std::endl;
     for (auto i : manager.large_group) {
         std::cout << i << " ";
     }
     std::cout << std::endl;
 
+    std::cout << "small group: " << manager.small_group.size() << std::endl;
     for (auto i : manager.small_group) {
         std::cout << i << " ";
     }
+    std::cout << std::endl;
+
+    std::cout << "middle group: " << manager.middle_group.size() << std::endl;
+    manager.middle_group.printRaw();
     std::cout << std::endl;
 #endif
 
@@ -193,10 +222,9 @@ void ext_qsort(TreeNode<std::string>* cur_node) {
         if (!fs) {
             std::cerr << "Error opening file: " << cur_node->data << "\n";
         }
-        std::sort(manager.middle_group.begin(), manager.middle_group.end());
+
         while (!manager.middle_group.empty()) {
-            T data_to_save = manager.middle_group.front();
-            manager.middle_group.pop_front();
+            T data_to_save = manager.middle_group.popMin();  // ascending order
             fs.write(reinterpret_cast<char*>(&data_to_save), sizeof(T));
             disk_write_count++;
         }
@@ -206,7 +234,7 @@ void ext_qsort(TreeNode<std::string>* cur_node) {
     /* write small and large groups to disk! */
     if (!manager.large_group.empty()) {
         // save structure to binary tree
-        auto save_name = cur_node->data + ".large";
+        auto save_name = cur_node->data + DUMPED_LARGE_SUFFIX;
         if (!cur_node->RightChild)
             cur_node->RightChild = new TreeNode<std::string>(save_name);
         // write to disk!
@@ -226,7 +254,7 @@ void ext_qsort(TreeNode<std::string>* cur_node) {
 
     if (!manager.small_group.empty()) {
         // save structure to binary tree
-        auto save_name = cur_node->data + ".small";
+        auto save_name = cur_node->data + DUMPED_SMALL_SUFFIX;
         if (!cur_node->LeftChild)
             cur_node->LeftChild = new TreeNode<std::string>(save_name);
         // write to disk!
@@ -243,6 +271,11 @@ void ext_qsort(TreeNode<std::string>* cur_node) {
         }
         fs.close();
     }
+
+#ifdef DEBUG
+    std::cout << cur_node->data << " sorted? " << std::boolalpha
+              << is_sorted<T>(cur_node->data) << std::endl;
+#endif
 
     /* done */
     std::cout << "Read " << input_name << " done!" << std::endl;
@@ -285,9 +318,24 @@ int main(int argc, char* argv[]) {
     std::string output_name = argv[2];
     TOTAL_MEM = strtol(argv[3], nullptr, 0); // available memory in bytes
     */
-    std::string input_name = "data_chunk_1KB";
-    std::string output_name = "data_chunk_1KB_sorted";
-    TOTAL_MEM = 300;
+
+#ifdef DEBUG
+    /* test endianness of the platform */
+    {
+        uint32_t val = 0x01;
+        char* buff = (char*)&val;
+
+        if (buff[0] == 0) {
+            std::cout << "Big endian\n";
+        } else {
+            std::cout << "Little endian\n";
+        };
+    }
+#endif
+
+    std::string input_name = "data_chunk_256KB";
+    std::string output_name = "data_chunk_256KB_sorted";
+    TOTAL_MEM = 1024*16;
 
     disk_read_count = disk_write_count = 0;
 
