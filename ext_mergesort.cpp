@@ -37,14 +37,6 @@ unsigned long disk_read_count = 0;
 unsigned long disk_write_count = 0;
 
 unsigned long TOTAL_MEM;
-unsigned long INPUT_BUFFER_MEM;
-unsigned long INPUT_BUFFER_SIZE;
-unsigned long SMALL_GROUP_MEM;
-unsigned long SMALL_GROUP_SIZE;
-unsigned long LARGE_GROUP_MEM;
-unsigned long LARGE_GROUP_SIZE;
-unsigned long MIDDLE_GROUP_MEM;
-unsigned long MIDDLE_GROUP_SIZE;
 
 template <typename T>
 bool is_sorted(const std::string input_name, bool ascending = true) {
@@ -167,7 +159,7 @@ ssize_t input(std::string filename, int total_mem) {
 }
 
 template <typename T>
-void merge(int start, int end, int location) {
+void merge(int start, int end, int location, int total_mem) {
     int runs_count = end - start + 1;
 
     std::ifstream input[runs_count];
@@ -185,7 +177,7 @@ void merge(int start, int end, int location) {
     std::ofstream output;
     std::string ss(DUMPED_RUN_PREFIX);
     ss += std::to_string(location);
-    output.open(ss, std::ios::out | std::ios::binary);
+    output.open(ss, std::ios::out | std::ios::binary | std::ios::ate);
 
     for (int i = 0; i < runs_count; i++) {
         T cur_data;
@@ -193,6 +185,15 @@ void merge(int start, int end, int location) {
             input[i].read((char*)&cur_data, sizeof(T));
             disk_read_count++;
             if (!input[i].eof()) heap.push(HeapNode(cur_data, i));
+            if (heap.size() >= total_mem / sizeof(T)) {
+                while (!heap.empty()) {
+                    T to_pop = heap.top().data;
+                    heap.pop();
+
+                    output.write(reinterpret_cast<char*>(&to_pop), sizeof(T));
+                    disk_write_count++;
+                }
+            }
         }
     }
 
@@ -226,7 +227,7 @@ void merge(int start, int end, int location) {
 }
 
 template <typename T>
-void merge(int runs_count, std::string output_name) {
+void merge(int runs_count, std::string output_name, int total_mem) {
     PRINT_SEPARATOR_START;
     std::cout << "Merging " << runs_count << " files into \"" << output_name
               << "\"" << std::endl;
@@ -236,7 +237,7 @@ void merge(int runs_count, std::string output_name) {
     int end = runs_count;
     while (start < end) {
         int location = end;
-        int distance = 100;
+        int distance = 1;  // 1 for pairwise merging
         int time = (end - start + 1) / distance + 1;
         if ((end - start + 1) / time < distance) {
             distance = (end - start + 1) / time + 1;
@@ -244,7 +245,7 @@ void merge(int runs_count, std::string output_name) {
         while (start <= end) {
             int mid = std::min(start + distance, end);
             location++;
-            merge<T>(start, mid, location);
+            merge<T>(start, mid, location, total_mem);
             start = mid + 1;
         }
         end = location;
@@ -291,14 +292,14 @@ int main(int argc, char* argv[]) {
     }
 #endif
 
-    std::string input_name = "data_chunk_256MB";
-    std::string output_name = "data_chunk_256MB_sorted";
-    TOTAL_MEM = 250000;
+    std::string input_name = "data_chunk_256KB";
+    std::string output_name = "data_chunk_256KB_sorted";
+    TOTAL_MEM = 250;
 
     disk_read_count = disk_write_count = 0;
 
     auto runs_count = input<uint32_t>(input_name, TOTAL_MEM);
-    merge<uint32_t>(runs_count, output_name);
+    merge<uint32_t>(runs_count, output_name, TOTAL_MEM);
 
     std::cout << "Finished.\n";
     std::cout << "Disk read count: " << disk_read_count << std::endl;
