@@ -333,9 +333,9 @@ int main(int argc, char* argv[]) {
     }
 #endif
 
-    std::string input_name = "data_chunk_256KB";
-    std::string output_name = "data_chunk_256KB_sorted";
-    TOTAL_MEM = 1024*16;
+    std::string input_name = "data_chunk_1KB";
+    std::string output_name = "data_chunk_1KB_sorted";
+    TOTAL_MEM = 1024*32;
 
     disk_read_count = disk_write_count = 0;
 

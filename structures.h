@@ -12,15 +12,15 @@
 #ifndef STRUCTURES_H
 #define STRUCTURES_H
 
+#include <deque>
 #include <fstream>
 #include <iostream>
 #include <list>
-#include <unordered_map>
 #include <queue>
-#include <deque>
+#include <unordered_map>
 
-#include "extern/MinMaxHeap.hpp"
 #include "defs.h"
+#include "extern/MinMaxHeap.hpp"
 /**
  * @brief Defines a generic 2-D matrix with metadata.
  *
@@ -36,7 +36,7 @@ struct matrix_t {
     uint32_t size_of_T;
 
     /* 2-D array */
-    T **arr;
+    T** arr;
 };
 
 /**
@@ -55,7 +55,7 @@ class buffer_t {
 
    public:
     /* constructors */
-    buffer_t(char const *filename, size_t _size, size_t _window = 1) {
+    buffer_t(char const* filename, size_t _size, size_t _window = 1) {
         fs.open(filename, std::ios::in | std::ios::out | std::ios::binary);
         capacity = _size;
         window = _window;
@@ -65,9 +65,9 @@ class buffer_t {
         /* load metadata */
         // fs.read((char*) &magic, sizeof(uint32_t));
         fs.seekg(sizeof(uint32_t), std::ios::beg); /* magic */
-        fs.read((char *)&row, sizeof(uint32_t));
-        fs.read((char *)&col, sizeof(uint32_t));
-        fs.read((char *)&size_of_T, sizeof(uint32_t));
+        fs.read((char*)&row, sizeof(uint32_t));
+        fs.read((char*)&col, sizeof(uint32_t));
+        fs.read((char*)&size_of_T, sizeof(uint32_t));
     }
 
     /* destructor */
@@ -86,14 +86,14 @@ class buffer_t {
     void assign(size_t i, size_t j, T val) {
         auto key = i * (col) + j;
         fs.seekp(MATRIX_ARR_OFFSET + key * sizeof(T), std::ios::beg);
-        fs.write(reinterpret_cast<char *>(&val), sizeof(T));
+        fs.write(reinterpret_cast<char*>(&val), sizeof(T));
         LRU_set(key, val);
     }
 
     T seekg_and_read(size_t arr_offset) {
         fs.seekg(MATRIX_ARR_OFFSET + arr_offset, std::ios::beg);
         T ret;
-        fs.read((char *)&ret, sizeof(T));
+        fs.read((char*)&ret, sizeof(T));
         return ret;
     }
 
@@ -169,9 +169,9 @@ class buffer_t {
 
     struct vector_t {
         size_t i;
-        buffer_t<T> *parent;
+        buffer_t<T>* parent;
         /* constructors */
-        vector_t(size_t _i, buffer_t<T> *e) : i(_i), parent(e) {}
+        vector_t(size_t _i, buffer_t<T>* e) : i(_i), parent(e) {}
 
         /* operators */
 
@@ -195,65 +195,64 @@ class buffer_t {
 
 template <class T>
 class TreeNode {
-	friend std::ostream& operator<<(std::ostream& out, TreeNode<T>& node) {
-		out << node.data;
-		return out;
-	}
+    friend std::ostream& operator<<(std::ostream& out, TreeNode<T>& node) {
+        out << node.data;
+        return out;
+    }
 
-public:
-	TreeNode() :LeftChild(nullptr), RightChild(nullptr), data((T)0) {}
-	TreeNode(T inData) :LeftChild(nullptr), RightChild(nullptr), data(inData) {}
-	TreeNode(TreeNode* lnodeptr, TreeNode* rnodeptr, T inData) : data(inData)
-	{
-		LeftChild = RightChild = nullptr;
-		if (lnodeptr) {
-			auto lchild = new TreeNode(lnodeptr);
-			LeftChild = lchild;
-		}
-		if (rnodeptr) {
-			auto rchild = new TreeNode(rnodeptr);
-			RightChild = rchild;
-		}
-	}
-	TreeNode(const TreeNode* inNode)			// 复制构造函数，深拷贝
-	{
-		data = inNode->data;
-		LeftChild = RightChild = nullptr;
-		if (inNode->LeftChild) {
-			auto lchild = new TreeNode(inNode->LeftChild);
-			LeftChild = lchild;
-		}
-		if (inNode->RightChild) {
-			auto rchild = new TreeNode(inNode->RightChild);
-			RightChild = rchild;
-		}
-	}
-	TreeNode(const TreeNode& inNode)			// 复制构造函数，深拷贝
-	{
-		data = inNode.data;
-		LeftChild = RightChild = nullptr;
-		if (inNode.LeftChild) {
-			auto lchild = new TreeNode(inNode.LeftChild);
-			LeftChild = lchild;
-		}
-		if (inNode.RightChild) {
-			auto rchild = new TreeNode(inNode.RightChild);
-			RightChild = rchild;
-		}
-	}
+   public:
+    TreeNode() : LeftChild(nullptr), RightChild(nullptr), data((T)0) {}
+    TreeNode(T inData)
+        : LeftChild(nullptr), RightChild(nullptr), data(inData) {}
+    TreeNode(TreeNode* lnodeptr, TreeNode* rnodeptr, T inData) : data(inData) {
+        LeftChild = RightChild = nullptr;
+        if (lnodeptr) {
+            auto lchild = new TreeNode(lnodeptr);
+            LeftChild = lchild;
+        }
+        if (rnodeptr) {
+            auto rchild = new TreeNode(rnodeptr);
+            RightChild = rchild;
+        }
+    }
+    TreeNode(const TreeNode* inNode)  // 复制构造函数，深拷贝
+    {
+        data = inNode->data;
+        LeftChild = RightChild = nullptr;
+        if (inNode->LeftChild) {
+            auto lchild = new TreeNode(inNode->LeftChild);
+            LeftChild = lchild;
+        }
+        if (inNode->RightChild) {
+            auto rchild = new TreeNode(inNode->RightChild);
+            RightChild = rchild;
+        }
+    }
+    TreeNode(const TreeNode& inNode)  // 复制构造函数，深拷贝
+    {
+        data = inNode.data;
+        LeftChild = RightChild = nullptr;
+        if (inNode.LeftChild) {
+            auto lchild = new TreeNode(inNode.LeftChild);
+            LeftChild = lchild;
+        }
+        if (inNode.RightChild) {
+            auto rchild = new TreeNode(inNode.RightChild);
+            RightChild = rchild;
+        }
+    }
 
-public:
-	TreeNode* LeftChild;
-	TreeNode* RightChild;
-	T data;
+   public:
+    TreeNode* LeftChild;
+    TreeNode* RightChild;
+    T data;
 };
-
 
 template <class T>
 class ext_qsort_t {
    public:
-    ext_qsort_t(unsigned int ninput, unsigned int nsmall,
-                       unsigned int nlarge, unsigned int nmiddle)
+    ext_qsort_t(unsigned int ninput, unsigned int nsmall, unsigned int nlarge,
+                unsigned int nmiddle)
         : n_input(ninput), n_small(nsmall), n_large(nlarge), n_middle(nmiddle) {
         input_buffer.reserve(n_input);
         small_group.reserve(n_small);
@@ -269,4 +268,15 @@ class ext_qsort_t {
     std::vector<T> large_group;
     MinMaxHeap<T> middle_group;  // TODO: replace with Double-ended PQ
 };
+
+/* Phase 3 */
+template <class T>
+struct HeapNode {
+    T data;
+    int index;
+    HeapNode(T a, int b) : data(a), index(b) {}
+    bool operator<(const HeapNode& rhs) const { return (data < rhs.data); }
+    bool operator>(const HeapNode& rhs) const { return (data > rhs.data); }
+};
+
 #endif

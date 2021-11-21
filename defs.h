@@ -22,7 +22,10 @@
 #define SMALL_GROUP_PROPORTION 0.3
 #define LARGE_GROUP_PROPORTION 0.3
 
-#define DUMPED_SMALL_SUFFIX ".small"
-#define DUMPED_LARGE_SUFFIX ".large"
+#define DUMPED_SMALL_SUFFIX ".s"
+#define DUMPED_LARGE_SUFFIX ".l"
+
+/* Phase 3 */
+#define DUMPED_RUN_PREFIX "run_"
 
 #endif
