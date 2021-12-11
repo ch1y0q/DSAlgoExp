@@ -279,4 +279,77 @@ struct HeapNode {
     bool operator>(const HeapNode& rhs) const { return (data > rhs.data); }
 };
 
+/* Phase 4 */
+template <class T, class container>
+class GenericBuffer {
+   public:
+    GenericBuffer() = default;
+    GenericBuffer(size_t max_size):max_size_(max_size) {};
+    ~GenericBuffer() = default;
+    virtual bool getNext(T& out) = 0 ;
+    virtual bool peekNext(T& out) const = 0;
+    virtual bool push(const T& in) = 0;
+    virtual bool empty() const = 0;
+    virtual void clear() = 0;
+    virtual void pop() = 0;
+    virtual bool full() const = 0;
+    virtual size_t getSize() const = 0;
+
+   protected:
+    container container_;
+    size_t max_size_;
+};
+
+template <class T>
+class QueueBuffer : public GenericBuffer<T, std::queue<T> > {
+   public:
+    QueueBuffer(size_t max_size): GenericBuffer<T, std::queue<T> > (max_size) {}
+    ~QueueBuffer() = default;
+
+    bool empty() const override{ return this->container_.empty(); }
+    size_t getSize() const override{ return this->container_.size(); }
+
+    T getNext() {
+        T out = this->container_.front();
+        this->container_.pop();
+        return out;
+    }
+
+    bool getNext(T& out) override {
+        if (empty()) return false;
+        out = this->container_.front();
+        this->container_.pop();
+        return true;
+    }
+
+    bool peekNext(T& out) const override{
+        if (empty()) return false;
+        out = this->container_.front();
+        return true;
+    }
+
+    void pop() override{
+        this->container_.pop();
+    }
+
+    void clear() override{
+        while(!empty()) pop();
+    }
+
+    bool push(const T& in) override {
+        if (getSize() >= this->max_size_) {
+            return false;
+        }
+        this->container_.push(in);
+        return true;
+    }
+
+    bool full() const override{
+        return getSize() >= this->max_size_;
+    }
+
+   private:
+   // inherited from GenericBuffer
+};
+
 #endif

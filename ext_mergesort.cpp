@@ -20,50 +20,15 @@
 
 #include "defs.h"
 #include "structures.h"
+#include "utils/stats.hpp"
+#include "utils/validation.hpp"
 
-#define PRINT_TIME_SO_FAR                                            \
-    std::cout << "Elasped time: "                                    \
-              << float(clock() - begin_time) / CLOCKS_PER_SEC * 1000 \
-              << " msec." << std::endl;
-#define PRINT_SEPARATOR_START \
-    std::cout << "-------------------------------------------------------\n";
-#define PRINT_SEPARATOR_END \
-    std::cout               \
-        << "-------------------------------------------------------\n\n\n";
-
-const clock_t begin_time = clock();  // time at initialization
+CLOCK_TIK;  // time at initialization
 
 unsigned long disk_read_count = 0;
 unsigned long disk_write_count = 0;
 
 unsigned long TOTAL_MEM;
-
-template <typename T>
-bool is_sorted(const std::string input_name, bool ascending = true) {
-    /* open file */
-    std::ifstream input;
-    input.open(input_name.c_str(), std::ios::in | std::ios::binary);
-
-    if (!input.good()) {
-        std::cerr << "Unable to read file " << input_name << " !" << std::endl;
-        exit(-1);
-    }
-
-    T cur_data, last_data;
-    input.read((char*)&last_data, sizeof(T));
-    while (!input.eof()) {
-        input.read((char*)&cur_data, sizeof(T));
-        if (!input.eof()) {
-            if (ascending) {
-                if (cur_data < last_data) return false;
-            } else {
-                if (cur_data > last_data) return false;
-            }
-        }
-        last_data = cur_data;
-    }
-    return true;
-}
 
 template <typename T>
 void dump_to_file(std::vector<T>& data, ssize_t run_count) {
@@ -279,17 +244,7 @@ int main(int argc, char* argv[]) {
     */
 
 #ifdef DEBUG
-    /* test endianness of the platform */
-    {
-        uint32_t val = 0x01;
-        char* buff = (char*)&val;
-
-        if (buff[0] == 0) {
-            std::cout << "Big endian\n";
-        } else {
-            std::cout << "Little endian\n";
-        };
-    }
+    showEndianness();
 #endif
 
     std::string input_name = "data_chunk_256KB";
