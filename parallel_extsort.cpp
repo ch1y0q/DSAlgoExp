@@ -28,7 +28,7 @@
 #include "utils/validation.hpp"
 
 #define FINAL_CHECK
-#define DEBUG_COUT_ENABLED
+//#define DEBUG_COUT_ENABLED
 
 #ifdef DEBUG_COUT_ENABLED
 #define DEBUG_COUT(msg...) \
@@ -41,7 +41,7 @@
 unsigned long disk_read_count = 0;
 unsigned long disk_write_count = 0;
 
-const size_t BLOCK_SIZE = 20;
+const size_t BLOCK_SIZE = 10;
 
 std::fstream input_fs;
 std::fstream output_fs;
@@ -108,7 +108,8 @@ void reader_function(const char* filename) {
         if (!input_fs.eof()) {  // cur_data is valid
             std::unique_lock<std::mutex> lk(mut_read_sort);
             read_buffer->push(cur_data);
-            DEBUG_COUT("[READER] Read: %u\n", cur_data);
+            // DEBUG_COUT("[READER] Read: %u\n", cur_data); // output each item
+            // read is so time-consuming
         }
         if (read_buffer->full()) {
             std::unique_lock<std::mutex> lk(mut_read_sort);
@@ -183,8 +184,9 @@ void sort_function() {
 
         std::unique_lock<std::mutex> lk_out(mut_sort_write);
         DEBUG_COUT("[SORT] Waiting for sort_cond.\n");
-        sort_cond.wait(
-            lk_out, []() { return !is_writing && sorted_runs > written_runs; });
+        sort_cond.wait(lk_out, []() {
+            return !is_writing && sorted_runs == written_runs + 1;
+        });
         std::swap(write_buffer,
                   sort_buffer);  // exchange pointers to two buffers
         DEBUG_COUT("[SORT] Swapped write_buffer and sort_buffer.\n");
@@ -210,13 +212,8 @@ void writer_function(std::string filename_prefix) {
     while (true) {
         std::unique_lock<std::mutex> lk_out(mut_sort_write);
         DEBUG_COUT("[WRITER] Waiting for writer_cond.\n");
-        writer_cond.wait(lk_out, []() { return sorted_runs > written_runs; });
+        writer_cond.wait(lk_out, []() { return !write_buffer->empty(); });
         // enter critical section
-        if (write_buffer->empty()) {
-            // DEBUG_COUT("[WRITER] Empty write_buffer. Continue.\n");
-            // TODO: busy waiting here!!
-            continue;
-        }
         DEBUG_COUT("[WRITER] Entering critical section.\n");
 
         is_writing = true;
@@ -243,6 +240,7 @@ void writer_function(std::string filename_prefix) {
         // TODO: how to break?
         if (written_runs == runs_count) {
             DEBUG_COUT("[WRITER] written_runs == runs_count, finish.\n");
+            printf("Writer thread: finished writing!\n");
             break;
         }
     }
@@ -281,7 +279,7 @@ int main() {
 
     std::cout << "Disk read count: " << disk_read_count << std::endl;
     std::cout << "Disk write count: " << disk_write_count << std::endl;
-    PRINT_TIME_SO_FAR;
+    CLOCK_TOK;
 
 #ifdef FINAL_CHECK
     for (int i = 1; i <= runs_count; i++) {

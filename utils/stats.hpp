@@ -1,12 +1,12 @@
 /**
  * @file stats.hpp
  * @author HUANG Qiyue
- * @brief 
+ * @brief
  * @version 0.1
  * @date 2021-12-06
- * 
+ *
  * @copyright Copyright (c) 2021
- * 
+ *
  */
 
 #ifndef STATS_H
@@ -25,5 +25,6 @@
         << "-------------------------------------------------------\n\n\n";
 
 #define CLOCK_TIK const clock_t begin_time = clock();
+#define CLOCK_TOK PRINT_TIME_SO_FAR
 
 #endif

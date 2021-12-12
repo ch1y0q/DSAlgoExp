@@ -74,7 +74,7 @@ bool is_consistent(const std::string input_name,
     T cur_data;
     while (!input.eof()) {
         input.read((char*)&cur_data, sizeof(T));
-        if(!input.eof()) input_set.insert(cur_data);
+        if (!input.eof()) input_set.insert(cur_data);
     }
 
     input.close();
@@ -93,7 +93,7 @@ bool is_consistent(const std::string input_name,
         T cur_data;
         while (!input.eof()) {
             input.read((char*)&cur_data, sizeof(T));
-            if(!input.eof()) output_set.insert(cur_data);
+            if (!input.eof()) output_set.insert(cur_data);
         }
 
         input.close();
@@ -104,8 +104,7 @@ bool is_consistent(const std::string input_name,
               << ", size of output files: " << output_set.size() << std::endl;
     */
 
-    return std::is_permutation(input_set.begin(), input_set.end(),
-                               output_set.begin());
+    return input_set == output_set;
 }
 
 #endif
