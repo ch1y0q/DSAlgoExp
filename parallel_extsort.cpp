@@ -56,17 +56,17 @@ QueueBuffer<uint32_t> buffer1(BLOCK_SIZE);
 QueueBuffer<uint32_t> buffer2(BLOCK_SIZE);
 QueueBuffer<uint32_t> buffer3(BLOCK_SIZE);
 
-/* volatile pointers, not volatile buffers! */
-QueueBuffer<uint32_t>* volatile read_buffer = &buffer1;
-QueueBuffer<uint32_t>* volatile sort_buffer = &buffer2;
-QueueBuffer<uint32_t>* volatile write_buffer = &buffer3;
+/* shared by threads */
+QueueBuffer<uint32_t>* read_buffer = &buffer1;
+QueueBuffer<uint32_t>* sort_buffer = &buffer2;
+QueueBuffer<uint32_t>* write_buffer = &buffer3;
 
 /* states for synchronization */
-volatile bool is_writing = false;
-volatile size_t runs_count = 0;
-volatile size_t read_runs = 0;
-volatile size_t sorted_runs = 0;
-volatile size_t written_runs = 0;
+bool is_writing = false;
+size_t runs_count = 0;
+size_t read_runs = 0;
+size_t sorted_runs = 0;
+size_t written_runs = 0;
 
 /* for deciding the best merge order */
 using run_len_pair = std::pair<size_t, size_t>;
