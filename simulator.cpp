@@ -15,7 +15,7 @@
 #include <random>
 
 #include "defs.h"
-#include "structures.h"
+#include "structures.hpp"
 
 matrix_t<uint32_t> generate_matrix(uint32_t r, uint32_t c) {
     matrix_t<uint32_t> m32;

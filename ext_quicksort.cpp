@@ -22,7 +22,7 @@
 #include <sstream>
 
 #include "defs.h"
-#include "structures.h"
+#include "structures.hpp"
 
 #define PRINT_TIME_SO_FAR                                            \
     std::cout << "Elasped time: "                                    \

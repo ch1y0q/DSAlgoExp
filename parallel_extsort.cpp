@@ -21,9 +21,9 @@
 #include <mutex>
 #include <thread>
 
+#include "LoserTree.hpp"
 #include "defs.h"
-#include "extern/LoserTree.hpp"
-#include "structures.h"
+#include "structures.hpp"
 #include "utils/stats.hpp"
 #include "utils/validation.hpp"
 
@@ -41,7 +41,7 @@
 unsigned long disk_read_count = 0;
 unsigned long disk_write_count = 0;
 
-const size_t BLOCK_SIZE = 10;
+const size_t BLOCK_SIZE = 200;
 
 std::fstream input_fs;
 std::fstream output_fs;
@@ -68,14 +68,9 @@ size_t read_runs = 0;
 size_t sorted_runs = 0;
 size_t written_runs = 0;
 
-/* for deciding the best merge order */
-using run_len_pair = std::pair<size_t, size_t>;
-using run_len_pairs = std::vector<std::pair<size_t, size_t>>;
-std::priority_queue<run_len_pair, run_len_pairs,
-                    std::function<bool(run_len_pair, run_len_pair)>>
-    length_per_run([](const run_len_pair& a, const run_len_pair& b) {
-        return a.second > b.second;
-    });
+run_len_pq length_per_run([](const run_len_pair& a, const run_len_pair& b) {
+    return a.second > b.second;
+});
 
 template <typename T>
 /* generate the initial runs */
@@ -237,7 +232,6 @@ void writer_function(std::string filename_prefix) {
 
         sort_cond.notify_one();
 
-        // TODO: how to break?
         if (written_runs == runs_count) {
             DEBUG_COUT("[WRITER] written_runs == runs_count, finish.\n");
             printf("Writer thread: finished writing!\n");
@@ -263,23 +257,23 @@ int main() {
     sort_thread.join();
     writer_thread.join();
 
+    CLOCK_TOK;
+
     // calculate the optimal merging order
-    auto merged_runs = runs_count;
-    while (length_per_run.size() > 1) {
-        auto a = length_per_run.top();
-        length_per_run.pop();
-        auto b = length_per_run.top();
-        length_per_run.pop();
-        merged_runs++;
-        length_per_run.push(std::make_pair(merged_runs, a.second + b.second));
-        std::cout << "(" << a.first << ", " << a.second << ") + (" << b.first
-                  << ", " << b.second << ") = (" << merged_runs << ", "
-                  << a.second + b.second << ")\n";
-    }
+    Huffman<run_len_pair, decltype(length_per_run)> huffman{runs_count,
+                                                            length_per_run};
+
+    huffman.forward(2, true);
+
+    /**
+     *  Example: write calculated huffman to the global variables
+     *      with efficient move semantics
+     *  runs_count = huffman.run_limit_;
+     *  length_per_run = std::move(huffman.container_);
+     */
 
     std::cout << "Disk read count: " << disk_read_count << std::endl;
     std::cout << "Disk write count: " << disk_write_count << std::endl;
-    CLOCK_TOK;
 
 #ifdef FINAL_CHECK
     for (int i = 1; i <= runs_count; i++) {
@@ -291,8 +285,19 @@ int main() {
               << is_consistent<uint32_t>(input_name, output_prefix, 1,
                                          runs_count)
               << std::endl;
-
 #endif
+
+    /* MERGE RUNS */
+    LoserTree<uint32_t, 8, BLOCK_SIZE> losertree(output_prefix, runs_count,
+                                                length_per_run);
+    losertree.pipeline();
+
+    length_per_run = std::move(
+        static_cast<decltype(length_per_run)>(losertree.huffman_.container_));
+    runs_count = losertree.run_limit_;
+
+    std::cout << "Back to main. We have runs_count = " << runs_count
+              << std::endl;
 
     return 0;
 }

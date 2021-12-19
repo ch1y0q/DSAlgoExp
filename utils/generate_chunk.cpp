@@ -14,7 +14,7 @@ int main() {
         exit(-1);
     }
 
-    for (uint32_t i = 0; i < 250; ++i) {
+    for (uint32_t i = 250; i >= 0; --i) {
         output.write(reinterpret_cast<char*>(&i), sizeof(uint32_t));
     }
     return 0;

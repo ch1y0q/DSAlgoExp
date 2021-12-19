@@ -1,5 +1,5 @@
 /**
- * @file structures.h
+ * @file structures.hpp
  * @author HUANG Qiyue
  * @brief
  * @version 0.1
@@ -19,8 +19,10 @@
 #include <queue>
 #include <unordered_map>
 
+#include "LoserTree.hpp"
 #include "defs.h"
 #include "extern/MinMaxHeap.hpp"
+
 /**
  * @brief Defines a generic 2-D matrix with metadata.
  *
@@ -167,6 +169,7 @@ class buffer_t {
         cache_line(uint32_t k, T v) : key(k), value(v) {}
     };
 
+    /* proxy class */
     struct vector_t {
         size_t i;
         buffer_t<T>* parent;
@@ -175,7 +178,7 @@ class buffer_t {
 
         /* operators */
 
-        /* r-value */
+        /* read only; use assgin() to write */
         const T operator[](size_t j) const {
             T ret;
 
@@ -284,9 +287,9 @@ template <class T, class container>
 class GenericBuffer {
    public:
     GenericBuffer() = default;
-    GenericBuffer(size_t max_size):max_size_(max_size) {};
+    GenericBuffer(size_t max_size) : max_size_(max_size){};
     ~GenericBuffer() = default;
-    virtual bool getNext(T& out) = 0 ;
+    virtual bool getNext(T& out) = 0;
     virtual bool peekNext(T& out) const = 0;
     virtual bool push(const T& in) = 0;
     virtual bool empty() const = 0;
@@ -301,18 +304,42 @@ class GenericBuffer {
 };
 
 template <class T>
-class QueueBuffer : public GenericBuffer<T, std::queue<T> > {
+class QueueBuffer : public GenericBuffer<T, std::queue<T>> {
    public:
-    QueueBuffer(size_t max_size): GenericBuffer<T, std::queue<T> > (max_size) {}
+    QueueBuffer(size_t max_size) : GenericBuffer<T, std::queue<T>>(max_size) {}
+    QueueBuffer(size_t max_size, size_t idx)
+        : GenericBuffer<T, std::queue<T>>(max_size), idx_(idx) {}
     ~QueueBuffer() = default;
 
-    bool empty() const override{ return this->container_.empty(); }
-    size_t getSize() const override{ return this->container_.size(); }
+    /* move ctor */
+    QueueBuffer(QueueBuffer&& other) { *this = std::move(other); }
+
+    /* move assignment */
+    QueueBuffer& operator=(QueueBuffer&& other) {
+        if (&other == this) {
+            return *this;
+        }
+        std::swap(this->container_, other.container_);
+        this->max_size_ = other.max_size_;
+        other.max_size_ = 0;
+        this->idx_ = other.idx_;
+        other.idx_ = 0;
+        return *this;
+    }
+
+    bool empty() const override { return this->container_.empty(); }
+    size_t getSize() const override { return this->container_.size(); }
 
     T getNext() {
         T out = this->container_.front();
         this->container_.pop();
         return out;
+    }
+
+    bool peekBack(T& out) const {
+        if (empty()) return false;
+        out = this->container_.back();
+        return true;
     }
 
     bool getNext(T& out) override {
@@ -322,18 +349,16 @@ class QueueBuffer : public GenericBuffer<T, std::queue<T> > {
         return true;
     }
 
-    bool peekNext(T& out) const override{
+    bool peekNext(T& out) const override {
         if (empty()) return false;
         out = this->container_.front();
         return true;
     }
 
-    void pop() override{
-        this->container_.pop();
-    }
+    void pop() override { this->container_.pop(); }
 
-    void clear() override{
-        while(!empty()) pop();
+    void clear() override {
+        while (!empty()) pop();
     }
 
     bool push(const T& in) override {
@@ -344,12 +369,150 @@ class QueueBuffer : public GenericBuffer<T, std::queue<T> > {
         return true;
     }
 
-    bool full() const override{
-        return getSize() >= this->max_size_;
-    }
+    bool full() const override { return getSize() >= this->max_size_; }
+
+    size_t idx_ = 0;
 
    private:
-   // inherited from GenericBuffer
+    // inherited from GenericBuffer
+};
+
+/* Phase 5 */
+
+/* for deciding the best merge order */
+using run_len_pair = std::pair<size_t, size_t>;
+using run_len_pairs = std::vector<std::pair<size_t, size_t>>;
+using run_len_pq =
+    std::priority_queue<run_len_pair, run_len_pairs,
+                        std::function<bool(run_len_pair, run_len_pair)>>;
+
+/* used only to calculate the optimal merging order */
+template <class T, class container>
+class Huffman {
+   public:
+    Huffman(size_t run_limit, container _container)
+        : run_limit_(run_limit), container_(_container) {}
+
+    /* move ctor */
+    Huffman(Huffman&& other) { *this = std::move(other); }
+
+    template <typename container__, typename std::enable_if<!std::is_reference<
+                                        container__>::value>::type* = nullptr>
+    Huffman(size_t run_limit, container__&& _container)
+        : run_limit_(run_limit) {
+        std::swap(this->container_, _container);
+    }
+
+    /* move assignment */
+    Huffman& operator=(Huffman&& other) {
+        if (&other == this) {
+            return *this;
+        }
+        std::swap(this->container_, other.container_);
+        this->run_limit_ = other.run_limit_;
+        other.run_limit_ = 0;
+        return *this;
+    }
+
+    /* remove n_ary items from container, sum into one and add it back,
+     * repeat nstep times */
+    std::vector<T> forward(size_t n_ary, size_t nstep, bool show = false,
+                           std::ostream& out = std::cout) {
+        std::vector<T> ret = {};
+        for (size_t i = 0; i < nstep; ++i) {
+            if (container_.size() <= 1) break;
+            decltype(container_.top().second) sum = 0;
+            size_t num_merge = std::min(n_ary, container_.size());
+            for (size_t j = 0; j < num_merge; ++j) {
+                auto t = container_.top();
+                ret.push_back(t);
+                sum += t.second;
+                container_.pop();
+                if (show) {
+                    out << "(" << t.first << ", " << t.second << ")";
+                    if (j < num_merge - 1) {
+                        out << " + ";
+                    }
+                }
+            }
+            run_limit_++;
+            container_.push(std::make_pair(run_limit_, sum));
+            if (show) {
+                out << " = (" << run_limit_ << ", " << sum << ")\n";
+            }
+        }
+        return ret;
+    }
+
+    std::vector<T> forward(size_t n_ary, bool show = false,
+                           std::ostream& out = std::cout) {
+        return forward(n_ary, SIZE_MAX, show, out);
+    }
+
+    size_t run_limit_;
+    container container_;
+};
+
+template <class T, class BufferType, size_t nway, size_t buffer_size>
+class BufferQueue {
+   public:
+    template <class KeyType, size_t K, size_t BlockSize>
+    friend class LoserTree;
+
+    /* ctor and dtor */
+    /* Resource Allocation Is Initialization */
+    BufferQueue() : k_(nway), buffer_size_(buffer_size) {
+        for (size_t i = 1; i <= 2 * k_; ++i) {
+            free_buffers_.push(new BufferType{buffer_size_, i});
+        }
+    }
+
+    ~BufferQueue() {
+        /* delete buffers */
+        while (!free_buffers_.empty()) {
+            auto* ptr = free_buffers_.front();
+            delete ptr;
+            free_buffers_.pop();
+        }
+        for (size_t i = 0; i < nway; ++i) {
+            while (!buffers_[i].empty()) {
+                auto* ptr = buffers_[i].front();
+                delete ptr;
+                (buffers_[i]).pop();
+            }
+        }
+    }
+
+    /* operator for easy access */
+    BufferType* operator[](size_t idx) { return this->buffers_[idx].front(); }
+
+    const size_t k_;
+    const size_t buffer_size_;
+
+   protected:
+    std::queue<BufferType*> buffers_[nway];
+    std::queue<BufferType*> free_buffers_;
+};
+
+template <class T, class BufferType, size_t buffer_size>
+class OutputBuffer {
+   public:
+    template <class KeyType, size_t K, size_t BlockSize>
+    friend class LoserTree;
+
+    OutputBuffer() {
+        buffers_.push_back(BufferType{buffer_size, 0});
+        buffers_.push_back(BufferType{buffer_size, 1});
+    }
+
+    ~OutputBuffer() = default;
+
+    size_t activeOutputBuffer =
+        0;  // the buffer used for LoserTree; the other writing to disk
+    bool is_writing = false;
+
+   protected:
+    std::vector<BufferType> buffers_;
 };
 
 #endif

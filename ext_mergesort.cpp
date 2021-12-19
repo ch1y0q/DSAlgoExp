@@ -19,7 +19,7 @@
 #include <sstream>
 
 #include "defs.h"
-#include "structures.h"
+#include "structures.hpp"
 #include "utils/stats.hpp"
 #include "utils/validation.hpp"
 
