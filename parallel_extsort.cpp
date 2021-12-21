@@ -27,7 +27,7 @@
 #include "utils/stats.hpp"
 #include "utils/validation.hpp"
 
-#define FINAL_CHECK
+//#define FINAL_CHECK
 //#define DEBUG_COUT_ENABLED
 
 #ifdef DEBUG_COUT_ENABLED
@@ -41,13 +41,14 @@
 unsigned long disk_read_count = 0;
 unsigned long disk_write_count = 0;
 
-const size_t BLOCK_SIZE = 200;
+const size_t BLOCK_SIZE = 10000;
 
 std::fstream input_fs;
 std::fstream output_fs;
 
 std::mutex mut_read_sort;
 std::mutex mut_sort_write;
+std::mutex mut_runs_count;
 std::condition_variable reader_cond;
 std::condition_variable writer_cond;
 std::condition_variable sort_cond;
@@ -63,7 +64,7 @@ QueueBuffer<uint32_t>* write_buffer = &buffer3;
 
 /* states for synchronization */
 bool is_writing = false;
-size_t runs_count = 0;
+size_t runs_count = SIZE_MAX;
 size_t read_runs = 0;
 size_t sorted_runs = 0;
 size_t written_runs = 0;
@@ -136,6 +137,9 @@ void reader_function(const char* filename) {
 
     runs_count = read_runs;
 
+    reader_cond.notify_one();  // alert end of runs
+    writer_cond.notify_one();  // alert end of runs
+
     /* done */
     printf("Reader thread: %s finished reading!\n", filename);
     // PRINT_TIME_SO_FAR;
@@ -151,16 +155,18 @@ void sort_function() {
         std::unique_lock<std::mutex> lk_in(mut_read_sort);
 
         DEBUG_COUT("[SORT] Waiting for reader_cond.\n");
-        reader_cond.wait(lk_in, []() { return read_runs > sorted_runs; });
+        reader_cond.wait(lk_in, []() {
+            return read_runs > sorted_runs || sorted_runs == runs_count;
+        });
+        if (sorted_runs == runs_count) {
+            break;
+        }
         std::swap(read_buffer,
                   sort_buffer);  // exchange pointers to the two buffers
 
         DEBUG_COUT("[SORT] Swapped read_buffer and sort_buffer.\n");
         lk_in.unlock();
 
-        /* TODO: enable LoserTree */
-        // LoserTree<uint32_t, BLOCK_SIZE> lt{};
-        // lt.K_Merge(sort_buffer);
         std::vector<uint32_t> queue_vec;
         while (!sort_buffer->empty()) {
             queue_vec.push_back(sort_buffer->getNext());
@@ -207,7 +213,12 @@ void writer_function(std::string filename_prefix) {
     while (true) {
         std::unique_lock<std::mutex> lk_out(mut_sort_write);
         DEBUG_COUT("[WRITER] Waiting for writer_cond.\n");
-        writer_cond.wait(lk_out, []() { return !write_buffer->empty(); });
+        writer_cond.wait(lk_out, []() {
+            return !write_buffer->empty() || written_runs == runs_count;
+        });
+        if (written_runs == runs_count) {
+            break;
+        }
         // enter critical section
         DEBUG_COUT("[WRITER] Entering critical section.\n");
 
@@ -244,8 +255,8 @@ int main() {
     CLOCK_TIK;
     std::cout.setf(std::ios::unitbuf);  // no buffer for std::cout
 
-    std::string input_name = "data_chunk_1KB";
-    std::string output_prefix = "data_chunk_1KB_run_";
+    std::string input_name = "data_chunk_256MB";
+    std::string output_prefix = "data_chunk_256MB_run_";
 
     disk_read_count = disk_write_count = 0;
 
@@ -260,10 +271,12 @@ int main() {
     CLOCK_TOK;
 
     // calculate the optimal merging order
+    /*
     Huffman<run_len_pair, decltype(length_per_run)> huffman{runs_count,
                                                             length_per_run};
 
     huffman.forward(2, true);
+    */
 
     /**
      *  Example: write calculated huffman to the global variables
@@ -276,6 +289,7 @@ int main() {
     std::cout << "Disk write count: " << disk_write_count << std::endl;
 
 #ifdef FINAL_CHECK
+    /*
     for (int i = 1; i <= runs_count; i++) {
         std::string output_name = output_prefix + std::to_string(i);
         std::cout << output_name << " sorted? " << std::boolalpha
@@ -285,12 +299,22 @@ int main() {
               << is_consistent<uint32_t>(input_name, output_prefix, 1,
                                          runs_count)
               << std::endl;
+    */
+    for (int i = 1; i <= runs_count; i++) {
+        std::string output_name = output_prefix + std::to_string(i);
+        assert(is_sorted<uint32_t>(output_name));
+    }
+    assert(is_consistent<uint32_t>(input_name, output_prefix, 1, runs_count));
 #endif
+
+    CLOCK_RESET;
 
     /* MERGE RUNS */
     LoserTree<uint32_t, 8, BLOCK_SIZE> losertree(output_prefix, runs_count,
-                                                length_per_run);
+                                                 length_per_run);
     losertree.pipeline();
+
+    CLOCK_TOK;
 
     length_per_run = std::move(
         static_cast<decltype(length_per_run)>(losertree.huffman_.container_));

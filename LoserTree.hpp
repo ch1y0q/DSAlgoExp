@@ -29,6 +29,7 @@
 #include "utils/stats.hpp"
 #include "utils/validation.hpp"
 
+//#define LT_VALIDATION_ENABLED
 //#define LT_DEBUG_COUT_ENABLED
 #ifdef LT_DEBUG_COUT_ENABLED
 #define LT_DEBUG_COUT(msg...) \
@@ -109,9 +110,12 @@ class LoserTree {
                           << std::endl;
             */
 
+#ifdef LT_VALIDATION_ENABLED
             assert(is_sorted<KeyType>(output_filename));
             assert(
                 is_consistent<KeyType>(run_prefix_, runs_to_merge, run_limit_));
+#endif
+
             // remove old runs
             remove_runs(runs_to_merge);
 
@@ -201,12 +205,14 @@ class LoserTree {
             if (output_.buffers_[output_.activeOutputBuffer].full()) {
                 LT_DEBUG_COUT("[K_MERGER] activeOutputBuffer is full.\n");
                 std::unique_lock<std::mutex> lk(mut_is_writing);
-                out_lt.wait(lk, [&]() { return !output_.is_writing; });
+                out_lt.wait(lk, [&]() {
+                    return !output_.is_writing &&
+                           output_.buffers_[1 - output_.activeOutputBuffer]
+                               .empty();
+                });
                 LT_DEBUG_COUT(
                     "[K_MERGER] Finish waiting for output writing.\n");
                 lk.unlock();
-                // std::thread write_thread{write_function,
-                // output_.activeOutputBuffer, run_limit_};
                 auto write_thread = std::thread([=]() {
                     return write_function(output_.activeOutputBuffer,
                                           run_limit_);
@@ -241,7 +247,6 @@ class LoserTree {
         t = (s + K) / 2;
         while (t > 0) {
             if (external_[s] > external_[tree_[t]]) {
-                // LT_DEBUG_COUT("[ADJUST] swapping...\n");
                 auto tmp = s;
                 s = tree_[t];
                 tree_[t] = tmp;

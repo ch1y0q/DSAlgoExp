@@ -24,7 +24,8 @@
     std::cout               \
         << "-------------------------------------------------------\n\n\n";
 
-#define CLOCK_TIK const clock_t begin_time = clock();
+#define CLOCK_TIK clock_t begin_time = clock();
+#define CLOCK_RESET begin_time = clock();
 #define CLOCK_TOK PRINT_TIME_SO_FAR
 
 #endif
