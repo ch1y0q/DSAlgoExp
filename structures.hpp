@@ -119,7 +119,6 @@ class buffer_t {
     }
 
     T LRU_get(size_t i, size_t j) {
-        // read_count++;
         auto key = i * (col) + j;
         if (cache_map.find(key) == cache_map.end()) {  // cache miss!
             miss_count++;
@@ -218,7 +217,7 @@ class TreeNode {
             RightChild = rchild;
         }
     }
-    TreeNode(const TreeNode* inNode)  // 复制构造函数，深拷贝
+    TreeNode(const TreeNode* inNode)  // deep copy
     {
         data = inNode->data;
         LeftChild = RightChild = nullptr;
@@ -231,7 +230,7 @@ class TreeNode {
             RightChild = rchild;
         }
     }
-    TreeNode(const TreeNode& inNode)  // 复制构造函数，深拷贝
+    TreeNode(const TreeNode& inNode)  // deep copy
     {
         data = inNode.data;
         LeftChild = RightChild = nullptr;
@@ -269,7 +268,7 @@ class ext_qsort_t {
     std::vector<T> input_buffer;
     std::vector<T> small_group;
     std::vector<T> large_group;
-    MinMaxHeap<T> middle_group;  // TODO: replace with Double-ended PQ
+    MinMaxHeap<T> middle_group;
 };
 
 /* Phase 3 */
@@ -507,8 +506,8 @@ class OutputBuffer {
 
     ~OutputBuffer() = default;
 
-    size_t activeOutputBuffer =
-        0;  // the buffer used for LoserTree; the other writing to disk
+    size_t activeOutputBuffer = 0;  // the buffer used for LoserTree; the other
+                                    // buffer is writing to disk
     bool is_writing = false;
 
    protected:

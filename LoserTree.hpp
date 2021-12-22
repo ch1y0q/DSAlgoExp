@@ -164,7 +164,7 @@ class LoserTree {
                 lk.unlock();
                 LT_DEBUG_COUT("[K_MERGER] Notify free_buffers_cond.\n");
                 free_buffers_cond
-                    .notify_one();  // notify that there is new empty buffer
+                    .notify_one();  // notify there is new free buffer
                 if (input_.buffers_[q]
                         .empty()) {  // no new buffer in the buffer queue
                     if (fss[q].eof() && !is_reading_[q]) {
@@ -230,8 +230,6 @@ class LoserTree {
             out_lt.wait(lk, [&]() { return !output_.is_writing; });
             LT_DEBUG_COUT("[K_MERGER] Finish waiting for output writing.\n");
             lk.unlock();
-            // std::thread write_thread{write_function,
-            // output_.activeOutputBuffer, run_limit_};
             auto write_thread = std::thread([=]() {
                 return write_function(output_.activeOutputBuffer, run_limit_);
             });
@@ -281,7 +279,7 @@ class LoserTree {
         while (!fss[node_idx].eof()) {
             KeyType cur_data;
             fss[node_idx].read((char *)&cur_data, sizeof(KeyType));
-            // TODO: disk_read_count++;
+            // disk_read_count++;
             if (!fss[node_idx].eof()) {  // cur_data is valid
                 qb->push(cur_data);
             }
@@ -335,7 +333,7 @@ class LoserTree {
         while (output_.buffers_[out_buffer_idx].getNext(cur_data)) {
             output_fs.write(reinterpret_cast<char *>(&cur_data),
                             sizeof(KeyType));
-            // TODO: disk_write_count++;
+            // disk_write_count++;
         }
         output_fs.close();
 

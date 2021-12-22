@@ -104,8 +104,6 @@ void reader_function(const char* filename) {
         if (!input_fs.eof()) {  // cur_data is valid
             std::unique_lock<std::mutex> lk(mut_read_sort);
             read_buffer->push(cur_data);
-            // DEBUG_COUT("[READER] Read: %u\n", cur_data); // output each item
-            // read is so time-consuming
         }
         if (read_buffer->full()) {
             std::unique_lock<std::mutex> lk(mut_read_sort);
@@ -149,7 +147,6 @@ void reader_function(const char* filename) {
 template <typename T>
 void sort_function() {
     DEBUG_COUT("[SORT] Sort thread is at your service.\n");
-    // reader_cond.notify_one();   // reader can start working!
     while (true) {
         DEBUG_COUT("[SORT] Fisrt line of loop!\n");
         std::unique_lock<std::mutex> lk_in(mut_read_sort);
@@ -269,14 +266,6 @@ int main() {
     writer_thread.join();
 
     CLOCK_TOK;
-
-    // calculate the optimal merging order
-    /*
-    Huffman<run_len_pair, decltype(length_per_run)> huffman{runs_count,
-                                                            length_per_run};
-
-    huffman.forward(2, true);
-    */
 
     /**
      *  Example: write calculated huffman to the global variables
